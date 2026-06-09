@@ -1,12 +1,37 @@
 import React from 'react';
-import { StyleSheet, Text, View, ViewStyle, TextStyle, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, ViewStyle, TextStyle, TouchableOpacity, Platform } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Power, Plus, Minus, ArrowLeft, ChevronDown, Tv, Wifi, Settings, Home, Play } from 'lucide-react-native';
+import { useTVConnection } from './useTvConnection';
 
+// Helper function for cross-platform shadows
+const createShadow = (color: string, offsetX: number, offsetY: number, opacity: number, radius: number, elevation: number) => {
+  if (Platform.OS === 'web') {
+    const shadowColor = color === '#000' ? 'rgba(0, 0, 0, 0.3)' : color;
+    return {
+      boxShadow: `${offsetX}px ${offsetY}px ${radius}px ${shadowColor}`,
+    } as any;
+  }
+  return {
+    shadowColor: color,
+    shadowOffset: { width: offsetX, height: offsetY },
+    shadowOpacity: opacity,
+    shadowRadius: radius,
+    elevation: elevation,
+  };
+};
 
 //define a funtional component
 const RemoteScreen: React.FC = ()=> {
+
+  const { sendCommand } = useTVConnection();
+
+  
+
     return(
+      <View style={{ flex: 1, backgroundColor: '#0a0a0a' }}>
+        
+      
         <SafeAreaProvider>
             <SafeAreaView style={styles.container}>
 
@@ -23,7 +48,7 @@ const RemoteScreen: React.FC = ()=> {
                 {/*UPPER CONTROL */}
                 <View style={styles.controlsZone}>
 
-                    <TouchableOpacity style={styles.powerButtonCircle} activeOpacity={0.7}>
+                    <TouchableOpacity style={styles.powerButtonCircle} activeOpacity={0.7} onPress={()=> sendCommand('POWER')}>
                         <Power color="#ff4444" size={22} strokeWidth={2.5} />
                     </TouchableOpacity>
 
@@ -31,19 +56,19 @@ const RemoteScreen: React.FC = ()=> {
                     <View style={styles.pillsRow}>
 
                         <View style={styles.verticalPill}>
-                            <TouchableOpacity style={styles.pillButton}><Plus color="#888888" size={20} /></TouchableOpacity>
+                            <TouchableOpacity style={styles.pillButton} onPress={()=> sendCommand('VOLUME_UP')}><Plus color="#888888" size={20} /></TouchableOpacity>
                             <Text style={styles.pillLabel}>Vol</Text>
-                            <TouchableOpacity style={styles.pillButton}><Minus color="#888888" size={20} /></TouchableOpacity>
+                            <TouchableOpacity style={styles.pillButton} onPress={()=> sendCommand('VOLUME_DOWN')}><Minus color="#888888" size={20} /></TouchableOpacity>
                         </View>
 
-                        <TouchableOpacity style={styles.homeOuterRing} activeOpacity={0.7}>
+                        <TouchableOpacity style={styles.homeOuterRing} activeOpacity={0.7} onPress={()=> sendCommand('HOME')}>
                             <Home color="#a855f7" size={20} strokeWidth={2} />
                         </TouchableOpacity>
 
                         {/* Back Pill */}
                         <View style={styles.verticalPill}>
                             <View style={styles.pillSpacer} />
-                                <TouchableOpacity style={styles.pillButton} activeOpacity={0.6}>
+                                <TouchableOpacity style={styles.pillButton} activeOpacity={0.6} onPress={()=> sendCommand('BACK')}>
                                     <ArrowLeft color="#888888" size={22} strokeWidth={2.5} />
                                     <Text style={styles.backLabel}>Back</Text>
                                 </TouchableOpacity>
@@ -52,45 +77,39 @@ const RemoteScreen: React.FC = ()=> {
                     </View>
                 </View>
 
-
-
                 {/*TRACKPAD ZONE */}
 
                 <View style={styles.trackpadZone}>
                     <View style={styles.trackpadWrapper}>
                         {/* Left Wing: YouTube */}
-                        <TouchableOpacity style={[styles.streamingButton, styles.youtubeColor]} activeOpacity={0.7}>
-                            <Play color="#e509148b" size={14} fill="#e50914a4'" />
-                            
+                        <TouchableOpacity style={[styles.streamingButton, styles.youtubeColor]} activeOpacity={0.7} onPress={()=> sendCommand('LAUNCH_YOUTUBE')}>
+                            <Play color="#e509148b" size={14} fill="#e50914a4" />
                         </TouchableOpacity>
 
                         {/* Central Trackpad */}
-                        <TouchableOpacity style={styles.largeTrackpadOuter} activeOpacity={0.9}>
+                        <TouchableOpacity style={styles.largeTrackpadOuter} activeOpacity={0.9} onPress={()=> sendCommand('DPAD_CENTER')}>
                             <View style={styles.largeTrackpadInner} />
                         </TouchableOpacity>
 
-
                         {/* Right Wing: Netflix */}
-                        <TouchableOpacity style={[styles.streamingButton, styles.netflixColor]} activeOpacity={0.7}>
+                        <TouchableOpacity style={[styles.streamingButton, styles.netflixColor]} activeOpacity={0.7} onPress={()=> sendCommand('LAUNCH_NETFLIX')}>
                             <Text style={[styles.streamingText, { fontWeight: '900', color: '#e50914a4' }]}>N</Text>
                         </TouchableOpacity>
-
-                        
                     </View>
                 </View>
 
                 {/* ZONE 4: FOOTER */}
                 <View style={styles.footerZone}>
                     <TouchableOpacity><Wifi color="#555555" size={22} /></TouchableOpacity>
-                    <TouchableOpacity><Settings color="#555555" size={22} /></TouchableOpacity>
+                    <TouchableOpacity onPress={()=> sendCommand('SETTINGS')}><Settings color="#555555" size={22} /></TouchableOpacity>
                 </View>
                 
 
             </SafeAreaView>
         </SafeAreaProvider>
+      </View>
     )
 }
-
 
 export default RemoteScreen
 
@@ -162,18 +181,14 @@ const styles = StyleSheet.create<Styles>({
     alignItems: 'center',
   },
   powerButtonCircle: {
-    width: 52,
-    height: 52,
+    width: 62,
+    height: 62,
     borderRadius: 26,
     backgroundColor: '#141414',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 5,
+    ...createShadow('#000', 0, 4, 0.3, 5, 5),
   },
   pillsRow: {
     flexDirection: 'row',
@@ -196,6 +211,7 @@ const styles = StyleSheet.create<Styles>({
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+    flexDirection: 'column',
   },
   pillLabel: {
     color: '#555555',
@@ -212,17 +228,19 @@ const styles = StyleSheet.create<Styles>({
     height: 10,
   },
   homeOuterRing: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     borderWidth: 1.5,
-    borderColor: '#3b2063', // Neon purple hint from design image
+    backgroundColor: '#111111',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#111111',
+    // The Neon Purple Glow
+    borderColor: '#a855f7',
+    ...createShadow('#a855f7', 0, 0, 0.8, 3, 10),
   },
   trackpadZone: {
-    flex: 3,
+    flex: 3.2,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -237,20 +255,18 @@ const styles = StyleSheet.create<Styles>({
     height: 190,
     borderRadius: 95,
     borderWidth: 2,
-    borderColor: '#251a3a', // Base ring accent
     justifyContent: 'center',
     alignItems: 'center',
+    // The Deep Violet Base Glow
+    borderColor: '#8a38d7',
+    
   },
   largeTrackpadInner: {
     width: 184,
     height: 184,
     borderRadius: 92,
-    backgroundColor: '#121212',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 8,
+    backgroundColor: '#9090900f',
+    ...createShadow('#000', 0, 8, 0.4, 10, 8),
   },
   streamingButton: {
     width: 44,
