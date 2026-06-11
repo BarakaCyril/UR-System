@@ -16,6 +16,7 @@ const adbKeycodes = {
   'DPAD_DOWN': '20',
   'DPAD_LEFT': '21',
   'DPAD_RIGHT': '22',
+  'MUTE': '91',
 };
 
 
@@ -65,8 +66,14 @@ app.post('/command', (req, res) => {
         res.status(400).json({ error: 'Unknown command structure' });
     }
 
-})
+});
 
-app.listen(PORT, '0.0.0.0', ()=> {
-    console.log(`Server is running on port ${PORT}`);
-})
+app.get('/volume', (req, res) => {
+  exec('adb shell settings get system volume_music', (err, stdout) => {
+    if (err) {
+      return res.status(500).json({ error: 'Could not read TV volume state' });
+    }
+    const currentVolume = parseInt(stdout.trim(), 10) || 0;
+    return res.status(200).json({ level: currentVolume });
+  });
+});

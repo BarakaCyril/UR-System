@@ -6,6 +6,7 @@ export type TVCommand =
 | 'POWER' 
 | 'VOLUME_UP'
 | 'VOLUME_DOWN'
+| 'MUTE'
 | 'HOME'
 | 'BACK'
 | 'DPAD_UP'
