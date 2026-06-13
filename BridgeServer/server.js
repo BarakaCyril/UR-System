@@ -16,7 +16,7 @@ const adbKeycodes = {
   'DPAD_DOWN': '20',
   'DPAD_LEFT': '21',
   'DPAD_RIGHT': '22',
-  'MUTE': '91',
+  'MUTE': '164',
 };
 
 
@@ -76,4 +76,9 @@ app.get('/volume', (req, res) => {
     const currentVolume = parseInt(stdout.trim(), 10) || 0;
     return res.status(200).json({ level: currentVolume });
   });
+});
+
+
+app.listen(PORT, () => {
+  console.log(`Bridge server listening on http://localhost:${PORT}`);
 });
