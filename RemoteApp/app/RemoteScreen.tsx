@@ -9,7 +9,7 @@ const RemoteScreen: React.FC = ()=> {
   const { sendCommand } = useTVConnection();
 
   const [isSwipeMode, setIsSwipeMode] = useState(false);
-  const [volume, setVolume] = useState(40);
+  const [volume, setVolume] = useState(30);
 
   // Poll the TV volume state when the app mounts
   useEffect(() => {
