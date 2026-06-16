@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:github.com)",
+      "Bash(curl -s https://raw.githubusercontent.com/tronikos/androidtvremote2/main/src/androidtvremote2/pairing.py)",
+      "Bash(curl -s https://raw.githubusercontent.com/tronikos/androidtvremote2/main/src/androidtvremote2/base.py)"
+    ]
+  }
+}
