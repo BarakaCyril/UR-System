@@ -1,25 +1,75 @@
 import React, {useState, useEffect, useRef} from "react";
-import { StyleSheet, Text, View, ViewStyle, TextStyle, TouchableOpacity, PanResponder } from 'react-native';
-import { Home, ArrowLeft, Plus, Minus, ChevronUp, ChevronDown, VolumeX, MousePointer, Smartphone, Move, MonitorPlay, Film, LayoutGrid, LayoutDashboard, Pointer, Settings2, PlayCircle } from 'lucide-react-native';
+import { StyleSheet, Text, View, ViewStyle, TextStyle, TouchableOpacity, PanResponder, FlatList, Modal } from 'react-native';
+import { Home, ArrowLeft, Plus, Minus, VolumeX, MousePointer, Move, LayoutDashboard, Pointer, Settings2, PlayCircle, Tv } from 'lucide-react-native';
 import { theme } from '../constants/theme';
 import { useTVConnection } from '../app/useTvConnection';
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
-const RemoteScreen: React.FC = ()=> {
+import { CryptoManager } from "@/utils/CryptoManager";
+import { PairingModal } from '@/components/PairingModal';
+import { TVScanner, DiscoveredTv } from "@/utils/TVScanner";
+import { TVConnectionManager } from "@/utils/TVConnectionManager";
+
+const RemoteScreen: React.FC = () => {
   const { sendCommand } = useTVConnection();
+
+  //tv scanning
+  const [availableTVs, setAvailableTVs] = useState<DiscoveredTv[]>([]);
+  const [isDeviceListVisible, setIsDeviceListVisible] = useState(false);
+
+  useEffect(()=>{
+    //start scanning on app opens
+    TVScanner.startScan((tvs)=> {
+      setAvailableTVs(tvs);
+    });
+
+    return () => {
+      TVScanner.stopScan();
+    }
+  }, []);
+
+  const handleConcectToTv = async (tv: DiscoveredTv) => {
+    console.log(`Attempting to connect to ${tv.name}...`);
+    // Stop scanning once we pick a TV to save battery
+    TVScanner.stopScan();
+
+    // Trigger the PIN modal and start the TLS handshake using the discovered IP
+    setIsPairingVisible(true)
+    await TVConnectionManager.startPairing(tv.ip);
+  };
 
   const [isSwipeMode, setIsSwipeMode] = useState(false);
   const [volume, setVolume] = useState(30);
 
-  // Poll the TV volume state when the app mounts
-  useEffect(() => {
-    fetch('http://192.168.100.199:3000/volume')
-      .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
-      .then((data: { level?: number }) => { if (data.level !== undefined) setVolume(data.level); })
-      .catch(err => console.log("Error fetching initial volume", err));
+  //modal
+  const [isPairingVisible, setIsPairingVisible] = useState(false);  
+  const [isPairingLoading, setIsPairingLoading] = useState(false);
+
+  const handlePairingSubmit = (pinCode: string) => {
+    setIsPairingLoading(true);
+    console.log("User typed verification PIN code: ", pinCode);
+
+    //Simulate a netweok timeout delay
+    setTimeout(()=>{
+      setIsPairingLoading(false);
+      setIsPairingVisible(false);
+    }, 2000)
+  };
+
+
+  useEffect(()=>{
+    async function initCrypto(){
+      try{
+        console.log("Starting Crypto check...");
+        const identity = await CryptoManager.getClientIdentity();
+        console.log("Ready to connect to TV! Cert length:", identity.certPem.length);
+      }catch(err){
+        console.error("Failed to init crypto:", err);
+      }
+    }
+
+    initCrypto();
   }, []);
-
-
 
   //Gesture responder fo detecting swipes
   const swipeResponder = useRef(
@@ -53,14 +103,29 @@ const RemoteScreen: React.FC = ()=> {
       <SafeAreaView style={styles.container}>
         {/* HEADIGN N SHI */}
         <View style={styles.headerBar}>
+          
+          <TouchableOpacity
+            style = {styles.listIcon}
+            activeOpacity={0.7}
+            onPress={() => setIsDeviceListVisible(true)}
+          >
+            <Tv color={theme.colors.onSurface} size={24}/>
+            <View>
+              <Text style={styles.brandText}>LA GRANDE CONTROL</Text>
+              {/* Dynamic subtext to show scanning status */}
+              <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 2 }}>
+                {availableTVs.length > 0 
+                  ? `${availableTVs.length} TV(s) Found - Tap to connect` 
+                  : 'Scanning network...'}
+              </Text>
 
-          <Smartphone color={theme.colors.onSurface} size={24}/>
-          <Text style = {styles.brandText}>LA GRANDE CONTROL</Text>
+            </View>
+          </TouchableOpacity>
           
 
-          <View style={styles.avatarCircle}>
-            <View style={styles.avatarInnerPill}/>
-          </View>
+          <TouchableOpacity style={styles.avatarCircle} activeOpacity={0.7}>
+              <View style={styles.avatarInnerPill}></View>
+          </TouchableOpacity>
         </View>
 
 
@@ -215,6 +280,68 @@ const RemoteScreen: React.FC = ()=> {
 
         </View>
 
+        <PairingModal
+          visible={isPairingVisible}
+          onClose={() => setIsPairingVisible(false)}
+          onSubmitPin={handlePairingSubmit}
+          isPairingLoading={isPairingLoading}
+          tvName="TCL Google TV"
+        >
+
+        </PairingModal>
+
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={isDeviceListVisible}
+          onRequestClose={() => setIsDeviceListVisible(false)}
+        >
+
+          <View style={styles.modalOverlay}>
+                <View style={styles.deviceListContainer}>
+                  <Text style={styles.modalTitle}> Select a TV </Text>
+
+                  {availableTVs.length === 0 ? (
+                    <Text style={styles.modalSubtitle}> Searching for devices on your Wi-Fi... </Text>
+                  ):(
+                    <FlatList
+                      data={availableTVs}
+                      keyExtractor={(item) => item.ip}
+                      renderItem={({item}) => (
+                        <TouchableOpacity
+                          style={styles.deviceItem}
+                          onPress={() => {
+                            setIsDeviceListVisible(false);
+                            handleConcectToTv(item);
+                          }}
+                        >
+                          <Tv color="#38BDF8" size={24} />
+                          <View style={{ marginLeft: 12 }}>
+                            <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '600' }}>{item.name}</Text>
+                            <Text style={{ color: '#94A3B8', fontSize: 13 }}>{item.ip}</Text>
+                          </View>
+                        </TouchableOpacity>
+                      )}
+                    />
+                  )}
+
+                  
+                  <TouchableOpacity
+                    style={styles.button}
+                    onPress={() => setIsDeviceListVisible(false)}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+
+                </View>
+
+                
+          </View>
+
+        </Modal>
+
+
+
       </SafeAreaView>
     </SafeAreaProvider>
   )
@@ -227,6 +354,7 @@ export default RemoteScreen;
 interface Styles {
   container: ViewStyle;
   headerBar: ViewStyle;
+  listIcon: ViewStyle;
   brandText: TextStyle;
   avatarCircle: ViewStyle;
   avatarInnerPill: ViewStyle;
@@ -253,7 +381,15 @@ interface Styles {
   swipeIndicatorCenter: ViewStyle;
   bottomNavRow: ViewStyle;
   navIconActive: ViewStyle;
-  navIconInactive: ViewStyle
+  navIconInactive: ViewStyle;
+  deviceListContainer: ViewStyle;
+  deviceItem: ViewStyle;
+  modalOverlay: ViewStyle;
+  modalTitle: TextStyle;
+  modalSubtitle: TextStyle;
+  button: ViewStyle;
+  cancelButton: ViewStyle;
+  cancelButtonText: TextStyle;
 }
 
 const styles = StyleSheet.create<Styles>({
@@ -270,6 +406,12 @@ const styles = StyleSheet.create<Styles>({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: theme.spacing.base
+  },
+
+  listIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
   },
 
   brandText: {
@@ -501,5 +643,68 @@ const styles = StyleSheet.create<Styles>({
     alignItems: 'center',
   },
 
+  deviceListContainer: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: '#161B26',
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: '#232A3B',
+    maxHeight: '70%',
+  },
 
+  deviceItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0F131C',
+    padding: 16,
+    borderRadius: 14,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#2E384D',
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(10, 14, 23, 0.85)', // Matches dark theme overlay
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+
+  modalTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: '#FFF',
+      marginBottom: 8,
+  },
+
+  modalSubtitle: {
+      fontSize: 14,
+      color: '#94A3B8',
+      textAlign: 'center',
+      marginBottom: 24,
+      lineHeight: 20,
+  },
+
+  button: {
+    flex: 1,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#94A3B8',
+    fontWeight: '600',
+    fontSize: 15,
+  },
 })

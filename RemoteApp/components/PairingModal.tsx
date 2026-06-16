@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
         color: '#FFF',
         marginBottom: 8,
     },
-        modalSubtitle: {
+    modalSubtitle: {
         fontSize: 14,
         color: '#94A3B8',
         textAlign: 'center',

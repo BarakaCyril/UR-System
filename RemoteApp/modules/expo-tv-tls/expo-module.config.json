@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["ExpoTvTlsModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.tvtls.ExpoTvTlsModule"]
+  }
+}
